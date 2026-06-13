@@ -1,18 +1,14 @@
+
 {
-  "name": "vite-preact-starter",
+  "name": "worldcup-live-predictor-vercel",
   "private": true,
-  "version": "0.0.0",
-  "type": "module",
+  "version": "1.0.0",
+  "description": "2026 World Cup live predictor for StackBlitz + GitHub + Vercel",
   "scripts": {
-    "dev": "vite",
-    "build": "vite build",
-    "preview": "vite preview"
-  },
-  "dependencies": {
-    "preact": "^10.29.2"
+    "dev": "vercel dev",
+    "start": "vercel dev"
   },
   "devDependencies": {
-    "@preact/preset-vite": "^2.10.5",
-    "vite": "^8.0.16"
+    "vercel": "^41.0.0"
   }
 }
