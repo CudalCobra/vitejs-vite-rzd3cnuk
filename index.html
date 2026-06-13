@@ -1,350 +1,631 @@
-import React, { useState } from 'react';
-
-// The actual 12 Groups (A-L) for the 2026 World Cup
-const initialGroups = {
-  A: ['Mexico', 'South Korea', 'South Africa', 'Czechia'],
-  B: ['Canada', 'Switzerland', 'Qatar', 'Bosnia & Herzegovina'],
-  C: ['Brazil', 'Morocco', 'Haiti', 'Scotland'],
-  D: ['United States', 'Paraguay', 'Australia', 'Türkiye'],
-  E: ['Germany', 'Ivory Coast', 'Ecuador', 'Curaçao'],
-  F: ['Netherlands', 'Japan', 'Tunisia', 'Sweden'],
-  G: ['Belgium', 'Egypt', 'Iran', 'New Zealand'],
-  H: ['Spain', 'Uruguay', 'Saudi Arabia', 'Cabo Verde'],
-  I: ['France', 'Senegal', 'Norway', 'Iraq'],
-  J: ['Argentina', 'Algeria', 'Austria', 'Jordan'],
-  K: ['Portugal', 'Colombia', 'Uzbekistan', 'DR Congo'],
-  L: ['England', 'Croatia', 'Ghana', 'Panama']
-};
-
-export default function WorldCup2026Predictor() {
-  // groupPredictions: { GroupLetter: [1st, 2nd, 3rd] }
-  const [groupPredictions, setGroupPredictions] = useState(
-    Object.keys(initialGroups).reduce((acc, letter) => {
-      acc[letter] = [null, null, null];
-      return acc;
-    }, {})
-  );
-
-  // Selected 8 best third-place teams (tracked as an array of group letters or team names)
-  const [selectedThirdPlace, setSelectedThirdPlace] = useState([]);
-
-  // Knockout Stage brackets
-  const [r32Winners, setR32Winners] = useState(Array(16).fill(null));
-  const [r16Winners, setR16Winners] = useState(Array(8).fill(null));
-  const [qfWinners, setQfWinners] = useState(Array(4).fill(null));
-  const [sfWinners, setSfWinners] = useState(Array(2).fill(null));
-  const [champion, setChampion] = useState(null);
-
-  // Handle ranking teams 1st, 2nd, and 3rd inside a group card
-  const handleGroupSelect = (group, team) => {
-    const current = [...groupPredictions[group]];
-    
-    if (current[0] === team) {
-      current[0] = current[1]; current[1] = current[2]; current[2] = null;
-    } else if (current[1] === team) {
-      current[1] = current[2]; current[2] = null;
-    } else if (current[2] === team) {
-      current[2] = null;
-    } else {
-      if (!current[0]) current[0] = team;
-      else if (!current[1]) current[1] = team;
-      else if (!current[2]) current[2] = team;
-      else current[2] = team; // Replace 3rd if full
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>2026 World Cup Live Predictor</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    ::-webkit-scrollbar { width: 8px; height: 8px; }
+    ::-webkit-scrollbar-track { background: #020617; }
+    ::-webkit-scrollbar-thumb { background: #334155; border-radius: 999px; }
+    ::-webkit-scrollbar-thumb:hover { background: #475569; }
+    input[type=number]::-webkit-outer-spin-button,
+    input[type=number]::-webkit-inner-spin-button {
+      -webkit-appearance: none;
+      margin: 0;
     }
-
-    setGroupPredictions({ ...groupPredictions, [group]: current });
-    resetKnockouts();
-  };
-
-  // Toggle wild card selection for 3rd place teams
-  const toggleThirdPlaceWildcard = (team) => {
-    if (!team) return;
-    let updated = [...selectedThirdPlace];
-    if (updated.includes(team)) {
-      updated = updated.filter(t => t !== team);
-    } else {
-      if (updated.length < 8) updated.push(team);
-    }
-    setSelectedThirdPlace(updated);
-    resetKnockouts();
-  };
-
-  const resetKnockouts = () => {
-    setR32Winners(Array(16).fill(null));
-    setR16Winners(Array(8).fill(null));
-    setQfWinners(Array(4).fill(null));
-    setSfWinners(Array(2).fill(null));
-    setChampion(null);
-  };
-
-  // Helper to retrieve placeholder or active team name
-  const getThirdPlacePlaceholder = (index, label) => {
-    return selectedThirdPlace[index] || `3rd Place (${label})`;
-  };
-
-  // Official structural distribution mapping for the 2026 Round of 32
-  const r32Matchups = [
-    { id: 0, t1: groupPredictions.A[0] || '1A', t2: getThirdPlacePlaceholder(0, 'Pool 1') },
-    { id: 1, t1: groupPredictions.B[1] || '2B', t2: groupPredictions.F[1] || '2F' },
-    { id: 2, t1: groupPredictions.C[0] || '1C', t2: groupPredictions.D[1] || '2D' },
-    { id: 3, t1: groupPredictions.E[0] || '1E', t2: getThirdPlacePlaceholder(1, 'Pool 2') },
-    { id: 4, t1: groupPredictions.F[0] || '1F', t2: groupPredictions.G[1] || '2G' },
-    { id: 5, t1: groupPredictions.H[0] || '1H', t2: getThirdPlacePlaceholder(2, 'Pool 3') },
-    { id: 6, t1: groupPredictions.I[0] || '1I', t2: groupPredictions.J[1] || '2J' },
-    { id: 7, t1: groupPredictions.K[0] || '1K', t2: getThirdPlacePlaceholder(3, 'Pool 4') },
-    { id: 8, t1: groupPredictions.L[0] || '1L', t2: getThirdPlacePlaceholder(4, 'Pool 5') },
-    { id: 9, t1: groupPredictions.A[1] || '2A', t2: groupPredictions.E[1] || '2E' },
-    { id: 10, t1: groupPredictions.D[0] || '1D', t2: getThirdPlacePlaceholder(5, 'Pool 6') },
-    { id: 11, t1: groupPredictions.G[0] || '1G', t2: groupPredictions.H[1] || '2H' },
-    { id: 12, t1: groupPredictions.J[0] || '1J', t2: getThirdPlacePlaceholder(6, 'Pool 7') },
-    { id: 13, t1: groupPredictions.C[1] || '2C', t2: groupPredictions.I[1] || '2I' },
-    { id: 14, t1: groupPredictions.B[0] || '1B', t2: getThirdPlacePlaceholder(7, 'Pool 8') },
-    { id: 15, t1: groupPredictions.K[1] || '2K', t2: groupPredictions.L[1] || '2L' },
-  ];
-
-  const advanceTeam = (index, team, currentStage, setNextStage, nextStageArray, downstreamResetters) => {
-    if (!team || team.startsWith('1') || team.startsWith('2') || team.includes('Pool') || team.includes('3rd')) return;
-    const updated = [...nextStageArray];
-    updated[index] = team;
-    setNextStage(updated);
-    downstreamResetters.forEach(reset => reset());
-  };
-
-  return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 font-sans p-4 sm:p-6 selection:bg-emerald-500 selection:text-slate-950">
-      {/* Brand Header */}
-      <header className="max-w-7xl mx-auto text-center mb-10 mt-4">
-        <span className="text-xs font-bold tracking-widest text-emerald-400 uppercase bg-emerald-500/10 border border-emerald-500/20 px-3 py-1 rounded-full">
-          Interactive Bracket Builder
-        </span>
-        <h1 className="text-3xl font-black tracking-tight text-white mt-3 sm:text-5xl uppercase">
-          2026 World Cup Predictor
-        </h1>
-        <p className="mt-2 text-slate-400 max-w-xl mx-auto text-sm sm:text-base">
-          Manage all 12 groups, qualify the 8 best 3rd-place wildcards, and navigate the massive new 32-team elimination matrix.
-        </p>
-      </header>
-
-      <main className="max-w-7xl mx-auto space-y-12">
-        
-        {/* STEP 1: ALL 12 GROUPS */}
-        <section className="bg-slate-900/40 border border-slate-800/80 rounded-2xl p-4 sm:p-6 shadow-2xl backdrop-blur-md">
-          <div className="flex items-center space-x-3 mb-6 border-b border-slate-800 pb-3">
-            <span className="flex items-center justify-center bg-emerald-500 text-slate-950 font-black rounded-xl w-8 h-8 text-sm">1</span>
+    input[type=number] { -moz-appearance: textfield; }
+  </style>
+</head>
+<body class="min-h-screen bg-slate-950 text-slate-100 selection:bg-emerald-500 selection:text-slate-950">
+  <div class="max-w-7xl mx-auto px-4 py-6 sm:px-6 sm:py-8 space-y-8">
+    <header class="space-y-4">
+      <div class="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+        <div>
+          <div class="inline-flex items-center gap-2 rounded-full border border-emerald-500/20 bg-emerald-500/10 px-3 py-1 text-xs font-bold uppercase tracking-[0.25em] text-emerald-400">
+            Live Results + Predictor
+          </div>
+          <h1 class="mt-3 text-3xl font-black tracking-tight text-white sm:text-5xl uppercase">2026 World Cup Live Predictor</h1>
+          <p class="mt-2 max-w-3xl text-sm text-slate-400 sm:text-base">
+            Live group tables, best third-placed ranking, and knockout progression. Official results lock automatically.
+            Future fixtures stay editable so you can project the bracket forward.
+          </p>
+        </div>
+        <div class="rounded-2xl border border-slate-800 bg-slate-900/70 p-4 text-sm shadow-2xl backdrop-blur">
+          <div class="flex flex-wrap items-center gap-3">
             <div>
-              <h2 className="text-xl font-bold tracking-wide text-white">The Group Stages (A - L)</h2>
-              <p className="text-xs text-slate-400">Click teams to rank them 1st, 2nd, and 3rd in sequence.</p>
+              <div class="text-[11px] uppercase tracking-[0.2em] text-slate-500">Data source</div>
+              <div id="sourceLabel" class="font-semibold text-slate-200">Loading…</div>
+            </div>
+            <div class="h-8 w-px bg-slate-800"></div>
+            <div>
+              <div class="text-[11px] uppercase tracking-[0.2em] text-slate-500">Last sync</div>
+              <div id="lastSyncLabel" class="font-semibold text-slate-200">—</div>
+            </div>
+            <div class="h-8 w-px bg-slate-800"></div>
+            <div>
+              <div class="text-[11px] uppercase tracking-[0.2em] text-slate-500">Next refresh</div>
+              <div id="refreshLabel" class="font-semibold text-slate-200">—</div>
             </div>
           </div>
-          
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-            {Object.keys(initialGroups).map((letter) => {
-              const [w, ru, th] = groupPredictions[letter];
-              return (
-                <div key={letter} className="bg-slate-900 border border-slate-800 rounded-xl p-3.5 space-y-2">
-                  <div className="flex justify-between items-center border-b border-slate-800 pb-2">
-                    <h3 className="font-extrabold text-sm text-emerald-400 uppercase tracking-wider">Group {letter}</h3>
-                    <div className="flex space-x-1 text-[10px] font-mono">
-                      <span className={`px-1 rounded ${w ? 'bg-emerald-950 text-emerald-400' : 'bg-slate-800 text-slate-500'}`}>1: {w ? '✔' : '—'}</span>
-                      <span className={`px-1 rounded ${ru ? 'bg-cyan-950 text-cyan-400' : 'bg-slate-800 text-slate-500'}`}>2: {ru ? '✔' : '—'}</span>
-                      <span className={`px-1 rounded ${th ? 'bg-amber-950 text-amber-400' : 'bg-slate-800 text-slate-500'}`}>3: {th ? '✔' : '—'}</span>
+          <div class="mt-4 flex flex-wrap items-center gap-2">
+            <button id="refreshBtn" class="rounded-xl bg-emerald-500 px-3 py-2 text-sm font-bold text-slate-950 transition hover:bg-emerald-400">Refresh now</button>
+            <button id="toggleAutoBtn" class="rounded-xl border border-slate-700 px-3 py-2 text-sm font-semibold text-slate-200 transition hover:bg-slate-800">Auto refresh: on</button>
+            <button id="clearPredictionsBtn" class="rounded-xl border border-slate-700 px-3 py-2 text-sm font-semibold text-slate-200 transition hover:bg-slate-800">Clear my predictions</button>
+          </div>
+        </div>
+      </div>
+
+      <div id="statusBanner" class="rounded-2xl border border-slate-800 bg-slate-900/70 p-3 text-sm text-slate-300 shadow-xl"></div>
+    </header>
+
+    <section class="grid grid-cols-1 gap-4 xl:grid-cols-3">
+      <div class="rounded-2xl border border-slate-800 bg-slate-900/70 p-4 shadow-2xl xl:col-span-2">
+        <div class="mb-4 flex items-center justify-between gap-3 border-b border-slate-800 pb-3">
+          <div>
+            <h2 class="text-xl font-black uppercase tracking-wide text-white">Live matches & upcoming fixtures</h2>
+            <p class="text-xs text-slate-400">Completed fixtures remain locked. Enter predicted scores for fixtures that are not final yet.</p>
+          </div>
+          <div class="text-[11px] uppercase tracking-[0.2em] text-slate-500">Section 1</div>
+        </div>
+        <div id="fixtureTabs" class="mb-4 flex flex-wrap gap-2"></div>
+        <div id="fixturesPanel" class="space-y-3"></div>
+      </div>
+
+      <div class="rounded-2xl border border-slate-800 bg-slate-900/70 p-4 shadow-2xl">
+        <div class="mb-4 flex items-center justify-between gap-3 border-b border-slate-800 pb-3">
+          <div>
+            <h2 class="text-xl font-black uppercase tracking-wide text-white">Qualification snapshot</h2>
+            <p class="text-xs text-slate-400">Current best third-placed race and projected automatic qualifiers.</p>
+          </div>
+          <div class="text-[11px] uppercase tracking-[0.2em] text-slate-500">Section 2</div>
+        </div>
+        <div class="space-y-4">
+          <div>
+            <div class="mb-2 text-[11px] font-bold uppercase tracking-[0.2em] text-slate-500">Best third-placed teams</div>
+            <div id="thirdPlacePanel" class="space-y-2"></div>
+          </div>
+          <div>
+            <div class="mb-2 text-[11px] font-bold uppercase tracking-[0.2em] text-slate-500">Projected automatic qualifiers</div>
+            <div id="qualifiedSummary" class="space-y-2"></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="rounded-2xl border border-slate-800 bg-slate-900/70 p-4 shadow-2xl">
+      <div class="mb-4 flex items-center justify-between gap-3 border-b border-slate-800 pb-3">
+        <div>
+          <h2 class="text-xl font-black uppercase tracking-wide text-white">Group tables</h2>
+          <p class="text-xs text-slate-400">Recalculated from official results plus your predicted scorelines for unfinished matches.</p>
+        </div>
+        <div class="text-[11px] uppercase tracking-[0.2em] text-slate-500">Section 3</div>
+      </div>
+      <div id="groupTables" class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4"></div>
+    </section>
+
+    <section class="rounded-2xl border border-slate-800 bg-slate-900/70 p-4 shadow-2xl overflow-x-auto">
+      <div class="mb-4 flex items-center justify-between gap-3 border-b border-slate-800 pb-3 min-w-[1200px]">
+        <div>
+          <h2 class="text-xl font-black uppercase tracking-wide text-white">Knockout phase</h2>
+          <p class="text-xs text-slate-400">Official 2026 bracket structure. If the backend sends resolved real pairings, they fill automatically. Otherwise pool-based slots stay honest and visible.</p>
+        </div>
+        <div class="text-[11px] uppercase tracking-[0.2em] text-slate-500">Section 4</div>
+      </div>
+      <div id="knockoutGrid" class="min-w-[1200px]"></div>
+    </section>
+  </div>
+
+  <script>
+    const STORAGE_KEY = 'worldcup-live-predictor-vercel-v1';
+    const DEFAULT_REFRESH_SECONDS = 30;
+
+    const ROUND_OF_32_TEMPLATE = [
+      { matchNo: 73, label: 'R32 M73', a: { type: 'group', ref: 'A2' }, b: { type: 'group', ref: 'B2' } },
+      { matchNo: 74, label: 'R32 M74', a: { type: 'group', ref: 'E1' }, b: { type: 'thirdPool', pool: ['A', 'B', 'C', 'D', 'F'] } },
+      { matchNo: 75, label: 'R32 M75', a: { type: 'group', ref: 'F1' }, b: { type: 'group', ref: 'C2' } },
+      { matchNo: 76, label: 'R32 M76', a: { type: 'group', ref: 'C1' }, b: { type: 'group', ref: 'F2' } },
+      { matchNo: 77, label: 'R32 M77', a: { type: 'group', ref: 'I1' }, b: { type: 'thirdPool', pool: ['C', 'D', 'F', 'G', 'H'] } },
+      { matchNo: 78, label: 'R32 M78', a: { type: 'group', ref: 'E2' }, b: { type: 'group', ref: 'I2' } },
+      { matchNo: 79, label: 'R32 M79', a: { type: 'group', ref: 'A1' }, b: { type: 'thirdPool', pool: ['C', 'E', 'F', 'H', 'I'] } },
+      { matchNo: 80, label: 'R32 M80', a: { type: 'group', ref: 'L1' }, b: { type: 'thirdPool', pool: ['E', 'H', 'I', 'J', 'K'] } },
+      { matchNo: 81, label: 'R32 M81', a: { type: 'group', ref: 'D1' }, b: { type: 'thirdPool', pool: ['B', 'E', 'F', 'I', 'J'] } },
+      { matchNo: 82, label: 'R32 M82', a: { type: 'group', ref: 'G1' }, b: { type: 'thirdPool', pool: ['A', 'E', 'H', 'I', 'J'] } },
+      { matchNo: 83, label: 'R32 M83', a: { type: 'group', ref: 'K2' }, b: { type: 'group', ref: 'L2' } },
+      { matchNo: 84, label: 'R32 M84', a: { type: 'group', ref: 'H1' }, b: { type: 'group', ref: 'J2' } },
+      { matchNo: 85, label: 'R32 M85', a: { type: 'group', ref: 'B1' }, b: { type: 'thirdPool', pool: ['E', 'F', 'G', 'I', 'J'] } },
+      { matchNo: 86, label: 'R32 M86', a: { type: 'group', ref: 'J1' }, b: { type: 'group', ref: 'H2' } },
+      { matchNo: 87, label: 'R32 M87', a: { type: 'group', ref: 'K1' }, b: { type: 'thirdPool', pool: ['D', 'E', 'I', 'J', 'L'] } },
+      { matchNo: 88, label: 'R32 M88', a: { type: 'group', ref: 'D2' }, b: { type: 'group', ref: 'G2' } },
+    ];
+
+    const R16_TEMPLATE = [
+      { matchNo: 89, label: 'R16 M89', a: { type: 'winner', ref: 74 }, b: { type: 'winner', ref: 77 } },
+      { matchNo: 90, label: 'R16 M90', a: { type: 'winner', ref: 73 }, b: { type: 'winner', ref: 75 } },
+      { matchNo: 91, label: 'R16 M91', a: { type: 'winner', ref: 76 }, b: { type: 'winner', ref: 78 } },
+      { matchNo: 92, label: 'R16 M92', a: { type: 'winner', ref: 79 }, b: { type: 'winner', ref: 80 } },
+      { matchNo: 93, label: 'R16 M93', a: { type: 'winner', ref: 83 }, b: { type: 'winner', ref: 84 } },
+      { matchNo: 94, label: 'R16 M94', a: { type: 'winner', ref: 81 }, b: { type: 'winner', ref: 82 } },
+      { matchNo: 95, label: 'R16 M95', a: { type: 'winner', ref: 86 }, b: { type: 'winner', ref: 88 } },
+      { matchNo: 96, label: 'R16 M96', a: { type: 'winner', ref: 85 }, b: { type: 'winner', ref: 87 } },
+    ];
+
+    const QF_TEMPLATE = [
+      { matchNo: 97, label: 'QF M97', a: { type: 'winner', ref: 89 }, b: { type: 'winner', ref: 90 } },
+      { matchNo: 98, label: 'QF M98', a: { type: 'winner', ref: 93 }, b: { type: 'winner', ref: 94 } },
+      { matchNo: 99, label: 'QF M99', a: { type: 'winner', ref: 91 }, b: { type: 'winner', ref: 92 } },
+      { matchNo: 100, label: 'QF M100', a: { type: 'winner', ref: 95 }, b: { type: 'winner', ref: 96 } },
+    ];
+
+    const SF_TEMPLATE = [
+      { matchNo: 101, label: 'SF M101', a: { type: 'winner', ref: 97 }, b: { type: 'winner', ref: 98 } },
+      { matchNo: 102, label: 'SF M102', a: { type: 'winner', ref: 99 }, b: { type: 'winner', ref: 100 } },
+    ];
+
+    const FINAL_TEMPLATE = [
+      { matchNo: 104, label: 'Final', a: { type: 'winner', ref: 101 }, b: { type: 'winner', ref: 102 } },
+      { matchNo: 103, label: '3rd Place', a: { type: 'loser', ref: 101 }, b: { type: 'loser', ref: 102 } },
+    ];
+
+    const app = {
+      data: null,
+      predictions: { groupScores: {}, knockoutWinners: {} },
+      activeGroup: 'A',
+      autoRefresh: true,
+      refreshSeconds: DEFAULT_REFRESH_SECONDS,
+      refreshTimer: null,
+      refreshStartedAt: null,
+
+      init() {
+        this.loadLocalState();
+        this.bindStaticEvents();
+        this.fetchState();
+      },
+
+      bindStaticEvents() {
+        document.getElementById('refreshBtn').addEventListener('click', () => this.fetchState(true));
+        document.getElementById('toggleAutoBtn').addEventListener('click', () => {
+          this.autoRefresh = !this.autoRefresh;
+          this.updateAutoRefreshButton();
+          this.saveLocalState();
+          this.scheduleRefresh();
+        });
+        document.getElementById('clearPredictionsBtn').addEventListener('click', () => {
+          this.predictions = { groupScores: {}, knockoutWinners: {} };
+          this.saveLocalState();
+          this.render();
+        });
+      },
+
+      updateAutoRefreshButton() {
+        document.getElementById('toggleAutoBtn').textContent = `Auto refresh: ${this.autoRefresh ? 'on' : 'off'}`;
+      },
+
+      loadLocalState() {
+        try {
+          const raw = localStorage.getItem(STORAGE_KEY);
+          if (!raw) return;
+          const saved = JSON.parse(raw);
+          this.predictions = saved.predictions || this.predictions;
+          this.autoRefresh = typeof saved.autoRefresh === 'boolean' ? saved.autoRefresh : this.autoRefresh;
+          this.activeGroup = saved.activeGroup || this.activeGroup;
+        } catch (error) {
+          console.warn('Could not load local predictor state.', error);
+        }
+      },
+
+      saveLocalState() {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify({
+          predictions: this.predictions,
+          autoRefresh: this.autoRefresh,
+          activeGroup: this.activeGroup,
+        }));
+      },
+
+      async fetchState(force = false) {
+        this.setStatus(force ? 'Refreshing live state…' : 'Loading live state…', 'info');
+        try {
+          const res = await fetch(`/api/worldcup/state${force ? `?t=${Date.now()}` : ''}`, { headers: { Accept: 'application/json' } });
+          if (!res.ok) throw new Error(`HTTP ${res.status}`);
+          const json = await res.json();
+          this.data = json;
+          this.refreshSeconds = Number(json.refreshSeconds || DEFAULT_REFRESH_SECONDS);
+          this.refreshStartedAt = Date.now();
+          if (!this.activeGroup || !json.groups?.[this.activeGroup]) {
+            this.activeGroup = Object.keys(json.groups || {})[0] || 'A';
+          }
+          this.setStatus('Live state synced successfully.', 'success');
+          this.saveLocalState();
+          this.render();
+          this.scheduleRefresh();
+        } catch (error) {
+          console.error(error);
+          this.setStatus(`Could not load live state: ${error.message}.`, 'error');
+          this.scheduleRefresh();
+        }
+      },
+
+      scheduleRefresh() {
+        if (this.refreshTimer) clearInterval(this.refreshTimer);
+        this.updateAutoRefreshButton();
+        this.updateMetaPanel();
+        if (!this.autoRefresh) return;
+        this.refreshTimer = setInterval(() => {
+          this.updateMetaPanel();
+          const elapsed = (Date.now() - (this.refreshStartedAt || 0)) / 1000;
+          if (elapsed >= this.refreshSeconds) this.fetchState();
+        }, 1000);
+      },
+
+      setStatus(message, type = 'info') {
+        const banner = document.getElementById('statusBanner');
+        const tone = {
+          info: 'border-slate-800 bg-slate-900/70 text-slate-300',
+          success: 'border-emerald-500/20 bg-emerald-500/10 text-emerald-300',
+          error: 'border-rose-500/20 bg-rose-500/10 text-rose-300',
+        }[type] || 'border-slate-800 bg-slate-900/70 text-slate-300';
+        banner.className = `rounded-2xl p-3 text-sm shadow-xl border ${tone}`;
+        banner.textContent = message;
+      },
+
+      updateMetaPanel() {
+        document.getElementById('sourceLabel').textContent = this.data?.source?.name || 'Backend not connected';
+        document.getElementById('lastSyncLabel').textContent = this.data?.syncedAt ? new Date(this.data.syncedAt).toLocaleString() : '—';
+        const refreshEl = document.getElementById('refreshLabel');
+        if (!this.autoRefresh || !this.refreshStartedAt) refreshEl.textContent = 'Manual';
+        else {
+          const remaining = Math.max(0, Math.ceil(this.refreshSeconds - ((Date.now() - this.refreshStartedAt) / 1000)));
+          refreshEl.textContent = `${remaining}s`;
+        }
+      },
+
+      getGroups() { return this.data?.groups || {}; },
+
+      getGroupFixtures(groupLetter) {
+        return (this.getGroups()[groupLetter]?.fixtures || []).map((fixture) => ({
+          ...fixture,
+          prediction: this.predictions.groupScores[fixture.id] || null,
+        }));
+      },
+
+      getMergedScore(fixture) {
+        if (['FT', 'AET', 'PEN', 'FINAL'].includes((fixture.status || '').toUpperCase()) && fixture.score) {
+          return { ...fixture.score, locked: true };
+        }
+        if (fixture.prediction) return { ...fixture.prediction, locked: false };
+        return null;
+      },
+
+      setFixturePrediction(fixtureId, homeGoals, awayGoals) {
+        this.predictions.groupScores[fixtureId] = {
+          home: Math.max(0, Number(homeGoals || 0)),
+          away: Math.max(0, Number(awayGoals || 0)),
+        };
+        this.saveLocalState();
+        this.render();
+      },
+
+      clearFixturePrediction(fixtureId) {
+        delete this.predictions.groupScores[fixtureId];
+        this.saveLocalState();
+        this.render();
+      },
+
+      computeTables() {
+        const groups = this.getGroups();
+        const result = {};
+        for (const [groupLetter, payload] of Object.entries(groups)) {
+          const table = {};
+          (payload.teams || []).forEach((team) => {
+            table[team] = { team, group: groupLetter, mp: 0, w: 0, d: 0, l: 0, gf: 0, ga: 0, gd: 0, pts: 0 };
+          });
+          this.getGroupFixtures(groupLetter).forEach((fixture) => {
+            const score = this.getMergedScore(fixture);
+            if (!score) return;
+            const home = table[fixture.home];
+            const away = table[fixture.away];
+            if (!home || !away) return;
+            home.mp += 1; away.mp += 1;
+            home.gf += score.home; home.ga += score.away;
+            away.gf += score.away; away.ga += score.home;
+            if (score.home > score.away) {
+              home.w += 1; home.pts += 3; away.l += 1;
+            } else if (score.home < score.away) {
+              away.w += 1; away.pts += 3; home.l += 1;
+            } else {
+              home.d += 1; away.d += 1; home.pts += 1; away.pts += 1;
+            }
+          });
+          result[groupLetter] = Object.values(table)
+            .map((row) => ({ ...row, gd: row.gf - row.ga }))
+            .sort((a, b) => b.pts - a.pts || b.gd - a.gd || b.gf - a.gf || a.team.localeCompare(b.team))
+            .map((row, idx) => ({ ...row, rank: idx + 1 }));
+        }
+        return result;
+      },
+
+      computeQualificationSnapshot(tables) {
+        const winners = {};
+        const runnersUp = {};
+        const thirds = [];
+        Object.entries(tables).forEach(([group, rows]) => {
+          if (rows[0]) winners[group] = rows[0];
+          if (rows[1]) runnersUp[group] = rows[1];
+          if (rows[2]) thirds.push(rows[2]);
+        });
+        const rankedThirds = thirds
+          .sort((a, b) => b.pts - a.pts || b.gd - a.gd || b.gf - a.gf || a.group.localeCompare(b.group))
+          .map((row, idx) => ({ ...row, overallRank: idx + 1 }));
+        return {
+          winners,
+          runnersUp,
+          rankedThirds,
+          qualifiedThirds: rankedThirds.slice(0, 8),
+        };
+      },
+
+      resolveSlot(slot, qualification, matchResults, backendMatch) {
+        if (!slot) return { team: 'TBD', locked: false };
+        if (slot === 'home' || slot === 'away') return { team: backendMatch?.[slot] || 'TBD', locked: !!backendMatch?.locked };
+        if (slot.type === 'group') {
+          const group = slot.ref[0];
+          const rankSet = slot.ref.endsWith('1') ? qualification.winners : qualification.runnersUp;
+          return { team: rankSet[group]?.team || slot.ref, locked: false };
+        }
+        if (slot.type === 'thirdPool') {
+          const eligible = qualification.qualifiedThirds.filter((row) => slot.pool.includes(row.group));
+          if (!eligible.length) return { team: `Best 3rd (${slot.pool.join('/')})`, locked: false };
+          if (eligible.length === 1) return { team: eligible[0].team, locked: false };
+          return { team: eligible.map((row) => `${row.team} (${row.group})`).join(' / '), locked: false };
+        }
+        if (slot.type === 'winner') return { team: matchResults[slot.ref]?.winner || `Winner M${slot.ref}`, locked: !!matchResults[slot.ref]?.locked };
+        if (slot.type === 'loser') return { team: matchResults[slot.ref]?.loser || `Loser M${slot.ref}`, locked: !!matchResults[slot.ref]?.locked };
+        return { team: 'TBD', locked: false };
+      },
+
+      getBackendRoundsByMatch() {
+        const rounds = this.data?.knockout || {};
+        const map = {};
+        Object.values(rounds).forEach((roundMatches) => (roundMatches || []).forEach((match) => { map[match.matchNo] = match; }));
+        return map;
+      },
+
+      buildKnockoutRound(template, qualification, roundsByMatch, matchResults) {
+        return template.map((match) => {
+          const backend = roundsByMatch[match.matchNo];
+          const home = backend?.home ? { team: backend.home, locked: !!backend.locked } : this.resolveSlot(match.a, qualification, matchResults);
+          const away = backend?.away ? { team: backend.away, locked: !!backend.locked } : this.resolveSlot(match.b, qualification, matchResults);
+          const winner = backend?.winner || this.predictions.knockoutWinners[match.matchNo] || null;
+          return {
+            ...match,
+            home: home.team,
+            away: away.team,
+            winner,
+            loser: backend?.loser || null,
+            locked: !!backend?.locked,
+            status: backend?.status || 'scheduled',
+          };
+        });
+      },
+
+      setKnockoutWinner(matchNo, winner) {
+        this.predictions.knockoutWinners[matchNo] = winner;
+        this.saveLocalState();
+        this.render();
+      },
+
+      renderFixtureTabs() {
+        const groups = Object.keys(this.getGroups());
+        const mount = document.getElementById('fixtureTabs');
+        mount.innerHTML = groups.map((group) => `
+          <button class="rounded-xl px-3 py-2 text-sm font-bold ${group === this.activeGroup ? 'bg-emerald-500 text-slate-950' : 'border border-slate-700 text-slate-300 hover:bg-slate-800'}" data-group-tab="${group}">
+            Group ${group}
+          </button>
+        `).join('');
+        mount.querySelectorAll('[data-group-tab]').forEach((btn) => {
+          btn.addEventListener('click', () => {
+            this.activeGroup = btn.dataset.groupTab;
+            this.saveLocalState();
+            this.render();
+          });
+        });
+      },
+
+      renderFixtures() {
+        const fixtures = this.getGroupFixtures(this.activeGroup);
+        const panel = document.getElementById('fixturesPanel');
+        if (!fixtures.length) {
+          panel.innerHTML = '<div class="rounded-xl border border-slate-800 bg-slate-900/50 p-4 text-sm text-slate-400">No fixtures available yet for this group.</div>';
+          return;
+        }
+        panel.innerHTML = fixtures.map((fixture) => {
+          const score = this.getMergedScore(fixture);
+          const isLocked = score?.locked || false;
+          const status = (fixture.status || 'SCHEDULED').toUpperCase();
+          const homeValue = isLocked ? score.home : (fixture.prediction?.home ?? '');
+          const awayValue = isLocked ? score.away : (fixture.prediction?.away ?? '');
+          return `
+            <div class="rounded-2xl border ${isLocked ? 'border-emerald-500/20 bg-emerald-500/5' : 'border-slate-800 bg-slate-900/50'} p-4">
+              <div class="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+                <div>
+                  <div class="text-[11px] font-bold uppercase tracking-[0.2em] ${status === 'LIVE' ? 'text-amber-400' : isLocked ? 'text-emerald-400' : 'text-slate-400'}">${status}</div>
+                  <div class="mt-1 text-sm text-slate-400">${fixture.kickoff ? new Date(fixture.kickoff).toLocaleString() : 'Kick-off TBC'}${fixture.venue ? ` • ${fixture.venue}` : ''}</div>
+                </div>
+                <div class="text-right text-xs text-slate-500">${fixture.id}</div>
+              </div>
+              <div class="mt-4 grid grid-cols-[1fr_auto_1fr] items-center gap-3 text-sm font-bold">
+                <div class="truncate text-right text-slate-100">${fixture.home}</div>
+                <div class="rounded-xl border border-slate-800 bg-slate-950/70 px-3 py-1 text-xs uppercase tracking-[0.2em] text-slate-500">vs</div>
+                <div class="truncate text-slate-100">${fixture.away}</div>
+              </div>
+              <div class="mt-4 flex flex-wrap items-center gap-3">
+                <div class="flex items-center gap-2 rounded-xl border border-slate-800 bg-slate-950/60 px-3 py-2">
+                  <span class="text-xs uppercase tracking-[0.2em] text-slate-500">Score</span>
+                  <input data-score-input="home" data-fixture-id="${fixture.id}" type="number" min="0" step="1" value="${homeValue}" ${isLocked ? 'disabled' : ''} class="w-12 rounded-lg border border-slate-700 bg-slate-900 px-2 py-1 text-center text-sm font-bold text-white disabled:opacity-60" />
+                  <span class="text-slate-500">-</span>
+                  <input data-score-input="away" data-fixture-id="${fixture.id}" type="number" min="0" step="1" value="${awayValue}" ${isLocked ? 'disabled' : ''} class="w-12 rounded-lg border border-slate-700 bg-slate-900 px-2 py-1 text-center text-sm font-bold text-white disabled:opacity-60" />
+                </div>
+                ${isLocked ? '<div class="rounded-xl border border-emerald-500/20 bg-emerald-500/10 px-3 py-2 text-xs font-semibold uppercase tracking-[0.2em] text-emerald-300">Official result locked</div>' : `<button data-save-prediction="${fixture.id}" class="rounded-xl bg-cyan-500 px-3 py-2 text-sm font-bold text-slate-950 hover:bg-cyan-400">Save prediction</button><button data-clear-prediction="${fixture.id}" class="rounded-xl border border-slate-700 px-3 py-2 text-sm font-semibold text-slate-200 hover:bg-slate-800">Clear</button>`}
+              </div>
+            </div>
+          `;
+        }).join('');
+
+        panel.querySelectorAll('[data-save-prediction]').forEach((btn) => {
+          btn.addEventListener('click', () => {
+            const fixtureId = btn.dataset.savePrediction;
+            const home = panel.querySelector(`input[data-fixture-id="${fixtureId}"][data-score-input="home"]`).value;
+            const away = panel.querySelector(`input[data-fixture-id="${fixtureId}"][data-score-input="away"]`).value;
+            this.setFixturePrediction(fixtureId, home, away);
+          });
+        });
+        panel.querySelectorAll('[data-clear-prediction]').forEach((btn) => btn.addEventListener('click', () => this.clearFixturePrediction(btn.dataset.clearPrediction)));
+      },
+
+      renderThirdPlacePanel(qualification) {
+        document.getElementById('thirdPlacePanel').innerHTML = qualification.rankedThirds.map((row) => {
+          const selected = qualification.qualifiedThirds.some((item) => item.team === row.team && item.group === row.group);
+          return `
+            <div class="flex items-center justify-between rounded-xl border ${selected ? 'border-amber-500/20 bg-amber-500/10' : 'border-slate-800 bg-slate-950/60'} px-3 py-2 text-sm">
+              <div class="flex items-center gap-2">
+                <span class="inline-flex h-6 w-6 items-center justify-center rounded-full ${selected ? 'bg-amber-500 text-slate-950' : 'bg-slate-800 text-slate-300'} text-[11px] font-black">${row.overallRank}</span>
+                <span class="font-semibold text-slate-100">${row.team}</span>
+                <span class="text-xs uppercase tracking-[0.2em] text-slate-500">(${row.group})</span>
+              </div>
+              <div class="flex items-center gap-3 text-xs text-slate-400">
+                <span>Pts ${row.pts}</span>
+                <span>GD ${row.gd >= 0 ? '+' : ''}${row.gd}</span>
+                <span>GF ${row.gf}</span>
+              </div>
+            </div>
+          `;
+        }).join('');
+      },
+
+      renderQualifiedSummary(qualification) {
+        document.getElementById('qualifiedSummary').innerHTML = Object.keys(qualification.winners).sort().map((group) => `
+          <div class="rounded-xl border border-slate-800 bg-slate-950/60 px-3 py-2 text-sm">
+            <div class="text-[11px] uppercase tracking-[0.2em] text-slate-500">Group ${group}</div>
+            <div class="mt-1 flex items-center justify-between gap-4">
+              <span class="font-semibold text-emerald-300">1st: ${qualification.winners[group]?.team || '—'}</span>
+              <span class="font-semibold text-cyan-300">2nd: ${qualification.runnersUp[group]?.team || '—'}</span>
+            </div>
+          </div>
+        `).join('') + `
+          <div class="rounded-xl border border-slate-800 bg-slate-950/60 px-3 py-2 text-xs text-slate-400">
+            Projections use official finished scores plus your local future predictions. Pool-dependent third-place knockout slots stay visible until resolved by the backend.
+          </div>
+        `;
+      },
+
+      renderGroupTables(tables, qualification) {
+        document.getElementById('groupTables').innerHTML = Object.keys(tables).sort().map((group) => {
+          const rows = tables[group];
+          return `
+            <div class="rounded-2xl border border-slate-800 bg-slate-950/50 p-3">
+              <div class="mb-3 flex items-center justify-between border-b border-slate-800 pb-2">
+                <div class="text-sm font-black uppercase tracking-[0.2em] text-emerald-400">Group ${group}</div>
+                <div class="text-[10px] uppercase tracking-[0.2em] text-slate-500">Projected table</div>
+              </div>
+              <div class="space-y-1 text-xs">
+                <div class="grid grid-cols-[24px_1fr_34px_34px_34px_34px] gap-2 px-2 text-[10px] uppercase tracking-[0.2em] text-slate-500">
+                  <div>#</div><div>Team</div><div class="text-right">Pts</div><div class="text-right">GD</div><div class="text-right">GF</div><div class="text-right">MP</div>
+                </div>
+                ${rows.map((row) => {
+                  const auto = row.rank <= 2;
+                  const bestThird = row.rank === 3 && qualification.qualifiedThirds.some((t) => t.team === row.team && t.group === row.group);
+                  return `
+                    <div class="grid grid-cols-[24px_1fr_34px_34px_34px_34px] gap-2 rounded-xl border ${auto ? 'border-emerald-500/20 bg-emerald-500/10' : bestThird ? 'border-amber-500/20 bg-amber-500/10' : 'border-slate-800 bg-slate-900/60'} px-2 py-2 text-sm">
+                      <div class="font-black text-slate-300">${row.rank}</div>
+                      <div class="truncate font-semibold text-slate-100">${row.team}</div>
+                      <div class="text-right font-bold text-white">${row.pts}</div>
+                      <div class="text-right text-slate-300">${row.gd >= 0 ? '+' : ''}${row.gd}</div>
+                      <div class="text-right text-slate-300">${row.gf}</div>
+                      <div class="text-right text-slate-300">${row.mp}</div>
                     </div>
-                  </div>
-                  <div className="space-y-1 text-xs">
-                    {initialGroups[letter].map((team) => {
-                      const is1 = w === team; const is2 = ru === team; const is3 = th === team;
-                      return (
-                        <button
-                          key={team}
-                          onClick={() => handleGroupSelect(letter, team)}
-                          className={`w-full text-left px-2.5 py-1.5 rounded-md font-medium transition-all flex justify-between items-center ${
-                            is1 ? 'bg-emerald-500 text-slate-950 font-bold' :
-                            is2 ? 'bg-cyan-500 text-slate-950 font-bold' :
-                            is3 ? 'bg-amber-500 text-slate-950 font-bold' :
-                            'bg-slate-800/50 hover:bg-slate-800 text-slate-300'
-                          }`}
-                        >
-                          <span>{team}</span>
-                          {is1 && <span className="text-[10px] uppercase font-mono px-1 bg-slate-950/10 rounded">1st</span>}
-                          {is2 && <span className="text-[10px] uppercase font-mono px-1 bg-slate-950/10 rounded">2nd</span>}
-                          {is3 && <span className="text-[10px] uppercase font-mono px-1 bg-slate-950/10 rounded">3rd</span>}
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </section>
-
-        {/* STEP 2: WILDCARD THIRD-PLACE SELECTOR */}
-        <section className="bg-slate-900/40 border border-slate-800/80 rounded-2xl p-4 sm:p-6 shadow-2xl backdrop-blur-md">
-          <div className="flex items-center space-x-3 mb-4 border-b border-slate-800 pb-3">
-            <span className="flex items-center justify-center bg-amber-500 text-slate-950 font-black rounded-xl w-8 h-8 text-sm">2</span>
-            <div>
-              <h2 className="text-xl font-bold tracking-wide text-white">Select the 8 Best 3rd-Place Teams</h2>
-              <p className="text-xs text-slate-400">Only 8 of the 12 third-place finishers make the cut. Choose your top 8 ({selectedThirdPlace.length}/8):</p>
-            </div>
-          </div>
-
-          <div className="flex flex-wrap gap-2">
-            {Object.keys(groupPredictions).map((letter) => {
-              const team = groupPredictions[letter][2];
-              if (!team) return null;
-              const isSelected = selectedThirdPlace.includes(team);
-              return (
-                <button
-                  key={letter}
-                  disabled={!isSelected && selectedThirdPlace.length >= 8}
-                  onClick={() => toggleThirdPlaceWildcard(team)}
-                  className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
-                    isSelected 
-                      ? 'bg-amber-500 text-slate-950 font-bold border border-amber-400 shadow-md' 
-                      : 'bg-slate-900 border border-slate-800 text-slate-400 hover:text-slate-200 disabled:opacity-30'
-                  }`}
-                >
-                  {team} <span className="text-[10px] opacity-60">({letter})</span>
-                </button>
-              );
-            })}
-          </div>
-        </section>
-
-        {/* STEP 3: THE GIANT 2026 KNOCKOUT MATRIX */}
-        <section className="bg-slate-900/20 border border-slate-900 rounded-2xl p-4 overflow-x-auto">
-          <div className="flex items-center space-x-3 mb-8 border-b border-slate-800 pb-3 min-w-[1200px]">
-            <span className="flex items-center justify-center bg-cyan-500 text-slate-950 font-black rounded-xl w-8 h-8 text-sm">3</span>
-            <h2 className="text-xl font-bold tracking-wide text-white">The Knockout Phase Grid</h2>
-          </div>
-
-          {/* Horizontally scrolling bracket canvas */}
-          <div className="grid grid-cols-5 gap-6 items-stretch min-w-[1200px] font-mono text-xs">
-            
-            {/* 1. ROUND OF 32 (16 Matches) */}
-            <div className="space-y-3">
-              <h4 className="text-[10px] font-bold uppercase tracking-wider text-slate-500 border-b border-slate-800 pb-1 text-center">Round of 32</h4>
-              {r32Matchups.map((match, idx) => (
-                <div key={match.id} className="bg-slate-900/60 border border-slate-800/80 rounded-lg p-2 space-y-1">
-                  <button
-                    onClick={() => advanceTeam(Math.floor(idx / 2), match.t1, 'r32', setR32Winners, r32Winners, [() => setR16Winners(Array(8).fill(null)), () => setQfWinners(Array(4).fill(null)), () => setSfWinners(Array(2).fill(null)), () => setChampion(null)])}
-                    className={`w-full text-left px-2 py-1 rounded truncate transition-all ${r32Winners[Math.floor(idx / 2)] === match.t1 && !match.t1.includes('1') ? 'bg-emerald-500 text-slate-950 font-bold' : 'bg-slate-800/40 text-slate-300 hover:bg-slate-800'}`}
-                  >
-                    {match.t1}
-                  </button>
-                  <button
-                    onClick={() => advanceTeam(Math.floor(idx / 2), match.t2, 'r32', setR32Winners, r32Winners, [() => setR16Winners(Array(8).fill(null)), () => setQfWinners(Array(4).fill(null)), () => setSfWinners(Array(2).fill(null)), () => setChampion(null)])}
-                    className={`w-full text-left px-2 py-1 rounded truncate transition-all ${r32Winners[Math.floor(idx / 2)] === match.t2 && !match.t2.includes('Pool') ? 'bg-emerald-500 text-slate-950 font-bold' : 'bg-slate-800/40 text-slate-300 hover:bg-slate-800'}`}
-                  >
-                    {match.t2}
-                  </button>
-                </div>
-              ))}
-            </div>
-
-            {/* 2. ROUND OF 16 (8 Matches) */}
-            <div className="space-y-3 flex flex-col justify-around">
-              <div>
-                <h4 className="text-[10px] font-bold uppercase tracking-wider text-slate-500 border-b border-slate-800 pb-1 text-center mb-2">Round of 16</h4>
-                <div className="space-y-10">
-                  {Array(8).fill(null).map((_, idx) => {
-                    const t1 = r32Winners[idx * 2] || `Winner R32 M${idx * 2 + 1}`;
-                    const t2 = r32Winners[idx * 2 + 1] || `Winner R32 M${idx * 2 + 2}`;
-                    return (
-                      <div key={idx} className="bg-slate-900/60 border border-slate-800/80 rounded-lg p-2 space-y-1">
-                        <button
-                          onClick={() => advanceTeam(Math.floor(idx / 2), t1, 'r16', setR16Winners, r16Winners, [() => setQfWinners(Array(4).fill(null)), () => setSfWinners(Array(2).fill(null)), () => setChampion(null)])}
-                          className={`w-full text-left px-2 py-1 rounded truncate ${r16Winners[Math.floor(idx / 2)] === t1 && !t1.includes('R32') ? 'bg-cyan-500 text-slate-950 font-bold' : 'bg-slate-800/40 text-slate-300 hover:bg-slate-800'}`}
-                        >
-                          {t1}
-                        </button>
-                        <button
-                          onClick={() => advanceTeam(Math.floor(idx / 2), t2, 'r16', setR16Winners, r16Winners, [() => setQfWinners(Array(4).fill(null)), () => setSfWinners(Array(2).fill(null)), () => setChampion(null)])}
-                          className={`w-full text-left px-2 py-1 rounded truncate ${r16Winners[Math.floor(idx / 2)] === t2 && !t2.includes('R32') ? 'bg-cyan-500 text-slate-950 font-bold' : 'bg-slate-800/40 text-slate-300 hover:bg-slate-800'}`}
-                        >
-                          {t2}
-                        </button>
-                      </div>
-                    );
-                  })}
-                </div>
+                  `;
+                }).join('')}
               </div>
             </div>
+          `;
+        }).join('');
+      },
 
-            {/* 3. QUARTER-FINALS (4 Matches) */}
-            <div className="space-y-3 flex flex-col justify-around">
-              <div>
-                <h4 className="text-[10px] font-bold uppercase tracking-wider text-slate-500 border-b border-slate-800 pb-1 text-center mb-2">Quarterfinals</h4>
-                <div className="space-y-28">
-                  {Array(4).fill(null).map((_, idx) => {
-                    const t1 = r16Winners[idx * 2] || `Winner R16 M${idx * 2 + 1}`;
-                    const t2 = r16Winners[idx * 2 + 1] || `Winner R16 M${idx * 2 + 2}`;
-                    return (
-                      <div key={idx} className="bg-slate-900/60 border border-slate-800/80 rounded-lg p-2 space-y-1">
-                        <button
-                          onClick={() => advanceTeam(Math.floor(idx / 2), t1, 'qf', setQfWinners, qfWinners, [() => setSfWinners(Array(2).fill(null)), () => setChampion(null)])}
-                          className={`w-full text-left px-2 py-1 rounded truncate ${qfWinners[Math.floor(idx / 2)] === t1 && !t1.includes('R16') ? 'bg-blue-500 text-slate-950 font-bold' : 'bg-slate-800/40 text-slate-300 hover:bg-slate-800'}`}
-                        >
-                          {t1}
-                        </button>
-                        <button
-                          onClick={() => advanceTeam(Math.floor(idx / 2), t2, 'qf', setQfWinners, qfWinners, [() => setSfWinners(Array(2).fill(null)), () => setChampion(null)])}
-                          className={`w-full text-left px-2 py-1 rounded truncate ${qfWinners[Math.floor(idx / 2)] === t2 && !t2.includes('R16') ? 'bg-blue-500 text-slate-950 font-bold' : 'bg-slate-800/40 text-slate-300 hover:bg-slate-800'}`}
-                        >
-                          {t2}
-                        </button>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
+      renderKnockout(qualification) {
+        const byMatch = this.getBackendRoundsByMatch();
+        const results = {};
+        const r32 = this.buildKnockoutRound(ROUND_OF_32_TEMPLATE, qualification, byMatch, results);
+        r32.forEach((m) => { results[m.matchNo] = { winner: m.winner, loser: m.loser, locked: m.locked }; });
+        const r16 = this.buildKnockoutRound(R16_TEMPLATE, qualification, byMatch, results);
+        r16.forEach((m) => { results[m.matchNo] = { winner: m.winner, loser: m.loser, locked: m.locked }; });
+        const qf = this.buildKnockoutRound(QF_TEMPLATE, qualification, byMatch, results);
+        qf.forEach((m) => { results[m.matchNo] = { winner: m.winner, loser: m.loser, locked: m.locked }; });
+        const sf = this.buildKnockoutRound(SF_TEMPLATE, qualification, byMatch, results);
+        sf.forEach((m) => { results[m.matchNo] = { winner: m.winner, loser: m.loser, locked: m.locked }; });
+        const finals = this.buildKnockoutRound(FINAL_TEMPLATE, qualification, byMatch, results);
+
+        const renderMatchCard = (match, selectedClass) => `
+          <div class="rounded-2xl border border-slate-800/80 bg-slate-900/60 p-3 shadow-xl">
+            <div class="mb-2 flex items-center justify-between gap-2 text-[10px] uppercase tracking-[0.2em] text-slate-500">
+              <span>${match.label}</span>
+              <span>${match.status}</span>
             </div>
-
-            {/* 4. SEMI-FINALS (2 Matches) */}
-            <div className="space-y-3 flex flex-col justify-around">
-              <div>
-                <h4 className="text-[10px] font-bold uppercase tracking-wider text-slate-500 border-b border-slate-800 pb-1 text-center mb-2">Semifinals</h4>
-                <div className="space-y-72">
-                  {Array(2).fill(null).map((_, idx) => {
-                    const t1 = qfWinners[idx * 2] || `Winner QF M${idx * 2 + 1}`;
-                    const t2 = qfWinners[idx * 2 + 1] || `Winner QF M${idx * 2 + 2}`;
-                    return (
-                      <div key={idx} className="bg-slate-900/60 border border-slate-800/80 rounded-lg p-2 space-y-1">
-                        <button
-                          onClick={() => advanceTeam(0, t1, 'sf', (val) => setChampion(val[0]), [champion], [])}
-                          className={`w-full text-left px-2 py-1 rounded truncate ${champion === t1 && !t1.includes('QF') ? 'bg-amber-500 text-slate-950 font-bold' : 'bg-slate-800/40 text-slate-300 hover:bg-slate-800'}`}
-                        >
-                          {t1}
-                        </button>
-                        <button
-                          onClick={() => advanceTeam(0, t2, 'sf', (val) => setChampion(val[0]), [champion], [])}
-                          className={`w-full text-left px-2 py-1 rounded truncate ${champion === t2 && !t2.includes('QF') ? 'bg-amber-500 text-slate-950 font-bold' : 'bg-slate-800/40 text-slate-300 hover:bg-slate-800'}`}
-                        >
-                          {t2}
-                        </button>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
+            <div class="space-y-2">
+              <button data-knockout-pick="${match.matchNo}" data-team="${match.home.replace(/"/g, '&quot;')}" ${match.locked ? 'disabled' : ''} class="w-full rounded-xl px-3 py-2 text-left text-sm transition ${match.winner === match.home ? `${selectedClass} text-slate-950 font-black` : 'bg-slate-800/40 text-slate-200 hover:bg-slate-800'} disabled:opacity-70">${match.home}</button>
+              <button data-knockout-pick="${match.matchNo}" data-team="${match.away.replace(/"/g, '&quot;')}" ${match.locked ? 'disabled' : ''} class="w-full rounded-xl px-3 py-2 text-left text-sm transition ${match.winner === match.away ? `${selectedClass} text-slate-950 font-black` : 'bg-slate-800/40 text-slate-200 hover:bg-slate-800'} disabled:opacity-70">${match.away}</button>
             </div>
-
-            {/* 5. FINALS & CHAMPION HUB */}
-            <div className="flex flex-col justify-center items-center">
-              <h4 className="text-[10px] font-bold uppercase tracking-wider text-slate-500 border-b border-slate-800 pb-1 w-full text-center mb-4">Final Gold</h4>
-              <div className="bg-gradient-to-b from-amber-400/10 to-slate-900 border border-amber-500/30 rounded-2xl p-6 text-center w-full shadow-2xl relative overflow-hidden">
-                <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-amber-500 via-yellow-400 to-amber-600" />
-                <span className="text-4xl mb-2 block">🏆</span>
-                <p className="text-[10px] font-bold tracking-widest text-amber-400 uppercase">2026 World Champion</p>
-                <p className="text-lg font-black text-white mt-2 tracking-wide truncate">
-                  {champion && !champion.includes('M') ? champion : '????????'}
-                </p>
-              </div>
-            </div>
-
+            ${match.locked ? '<div class="mt-2 text-[10px] uppercase tracking-[0.2em] text-emerald-400">Official result locked</div>' : ''}
           </div>
-        </section>
-      </main>
-    </div>
-  );
-}
+        `;
+
+        document.getElementById('knockoutGrid').innerHTML = `
+          <div class="grid grid-cols-5 gap-6 items-start">
+            <div class="space-y-3">
+              <h3 class="border-b border-slate-800 pb-2 text-center text-[10px] font-black uppercase tracking-[0.2em] text-slate-500">Round of 32</h3>
+              ${r32.map((m) => renderMatchCard(m, 'bg-emerald-500')).join('')}
+            </div>
+            <div class="space-y-6">
+              <h3 class="border-b border-slate-800 pb-2 text-center text-[10px] font-black uppercase tracking-[0.2em] text-slate-500">Round of 16</h3>
+              ${r16.map((m) => renderMatchCard(m, 'bg-cyan-500')).join('')}
+            </div>
+            <div class="space-y-8">
+              <h3 class="border-b border-slate-800 pb-2 text-center text-[10px] font-black uppercase tracking-[0.2em] text-slate-500">Quarter-finals</h3>
+              ${qf.map((m) => renderMatchCard(m, 'bg-blue-500')).join('')}
+            </div>
+            <div class="space-y-10">
+              <h3 class="border-b border-slate-800 pb-2 text-center text-[10px] font-black uppercase tracking-[0.2em] text-slate-500">Semifinals</h3>
+              ${sf.map((m) => renderMatchCard(m, 'bg-violet-500')).join('')}
+            </div>
+            <div class="space-y-6">
+              <h3 class="border-b border-slate-800 pb-2 text-center text-[10px] font-black uppercase tracking-[0.2em] text-slate-500">3rd place & Final</h3>
+              ${finals.map((m) => renderMatchCard(m, m.matchNo === 104 ? 'bg-amber-500' : 'bg-slate-300')).join('')}
+              <div class="rounded-2xl border border-amber-500/30 bg-gradient-to-b from-amber-400/10 to-slate-900 p-6 text-center shadow-2xl">
+                <div class="text-4xl">🏆</div>
+                <div class="mt-2 text-[10px] font-black uppercase tracking-[0.3em] text-amber-400">Projected champion</div>
+                <div class="mt-3 truncate text-lg font-black text-white">${finals[0]?.winner || 'TBD'}</div>
+              </div>
+            </div>
+          </div>
+        `;
+        document.querySelectorAll('[data-knockout-pick]').forEach((btn) => btn.addEventListener('click', () => this.setKnockoutWinner(Number(btn.dataset.knockoutPick), btn.dataset.team)));
+      },
+
+      render() {
+        this.updateMetaPanel();
+        if (!this.data) return;
+        const tables = this.computeTables();
+        const qualification = this.computeQualificationSnapshot(tables);
+        this.renderFixtureTabs();
+        this.renderFixtures();
+        this.renderThirdPlacePanel(qualification);
+        this.renderQualifiedSummary(qualification);
+        this.renderGroupTables(tables, qualification);
+        this.renderKnockout(qualification);
+      },
+    };
+
+    window.addEventListener('DOMContentLoaded', () => app.init());
+  </script>
+</body>
+</html>
