@@ -1,0 +1,350 @@
+import React, { useState } from 'react';
+
+// The actual 12 Groups (A-L) for the 2026 World Cup
+const initialGroups = {
+  A: ['Mexico', 'South Korea', 'South Africa', 'Czechia'],
+  B: ['Canada', 'Switzerland', 'Qatar', 'Bosnia & Herzegovina'],
+  C: ['Brazil', 'Morocco', 'Haiti', 'Scotland'],
+  D: ['United States', 'Paraguay', 'Australia', 'Türkiye'],
+  E: ['Germany', 'Ivory Coast', 'Ecuador', 'Curaçao'],
+  F: ['Netherlands', 'Japan', 'Tunisia', 'Sweden'],
+  G: ['Belgium', 'Egypt', 'Iran', 'New Zealand'],
+  H: ['Spain', 'Uruguay', 'Saudi Arabia', 'Cabo Verde'],
+  I: ['France', 'Senegal', 'Norway', 'Iraq'],
+  J: ['Argentina', 'Algeria', 'Austria', 'Jordan'],
+  K: ['Portugal', 'Colombia', 'Uzbekistan', 'DR Congo'],
+  L: ['England', 'Croatia', 'Ghana', 'Panama']
+};
+
+export default function WorldCup2026Predictor() {
+  // groupPredictions: { GroupLetter: [1st, 2nd, 3rd] }
+  const [groupPredictions, setGroupPredictions] = useState(
+    Object.keys(initialGroups).reduce((acc, letter) => {
+      acc[letter] = [null, null, null];
+      return acc;
+    }, {})
+  );
+
+  // Selected 8 best third-place teams (tracked as an array of group letters or team names)
+  const [selectedThirdPlace, setSelectedThirdPlace] = useState([]);
+
+  // Knockout Stage brackets
+  const [r32Winners, setR32Winners] = useState(Array(16).fill(null));
+  const [r16Winners, setR16Winners] = useState(Array(8).fill(null));
+  const [qfWinners, setQfWinners] = useState(Array(4).fill(null));
+  const [sfWinners, setSfWinners] = useState(Array(2).fill(null));
+  const [champion, setChampion] = useState(null);
+
+  // Handle ranking teams 1st, 2nd, and 3rd inside a group card
+  const handleGroupSelect = (group, team) => {
+    const current = [...groupPredictions[group]];
+    
+    if (current[0] === team) {
+      current[0] = current[1]; current[1] = current[2]; current[2] = null;
+    } else if (current[1] === team) {
+      current[1] = current[2]; current[2] = null;
+    } else if (current[2] === team) {
+      current[2] = null;
+    } else {
+      if (!current[0]) current[0] = team;
+      else if (!current[1]) current[1] = team;
+      else if (!current[2]) current[2] = team;
+      else current[2] = team; // Replace 3rd if full
+    }
+
+    setGroupPredictions({ ...groupPredictions, [group]: current });
+    resetKnockouts();
+  };
+
+  // Toggle wild card selection for 3rd place teams
+  const toggleThirdPlaceWildcard = (team) => {
+    if (!team) return;
+    let updated = [...selectedThirdPlace];
+    if (updated.includes(team)) {
+      updated = updated.filter(t => t !== team);
+    } else {
+      if (updated.length < 8) updated.push(team);
+    }
+    setSelectedThirdPlace(updated);
+    resetKnockouts();
+  };
+
+  const resetKnockouts = () => {
+    setR32Winners(Array(16).fill(null));
+    setR16Winners(Array(8).fill(null));
+    setQfWinners(Array(4).fill(null));
+    setSfWinners(Array(2).fill(null));
+    setChampion(null);
+  };
+
+  // Helper to retrieve placeholder or active team name
+  const getThirdPlacePlaceholder = (index, label) => {
+    return selectedThirdPlace[index] || `3rd Place (${label})`;
+  };
+
+  // Official structural distribution mapping for the 2026 Round of 32
+  const r32Matchups = [
+    { id: 0, t1: groupPredictions.A[0] || '1A', t2: getThirdPlacePlaceholder(0, 'Pool 1') },
+    { id: 1, t1: groupPredictions.B[1] || '2B', t2: groupPredictions.F[1] || '2F' },
+    { id: 2, t1: groupPredictions.C[0] || '1C', t2: groupPredictions.D[1] || '2D' },
+    { id: 3, t1: groupPredictions.E[0] || '1E', t2: getThirdPlacePlaceholder(1, 'Pool 2') },
+    { id: 4, t1: groupPredictions.F[0] || '1F', t2: groupPredictions.G[1] || '2G' },
+    { id: 5, t1: groupPredictions.H[0] || '1H', t2: getThirdPlacePlaceholder(2, 'Pool 3') },
+    { id: 6, t1: groupPredictions.I[0] || '1I', t2: groupPredictions.J[1] || '2J' },
+    { id: 7, t1: groupPredictions.K[0] || '1K', t2: getThirdPlacePlaceholder(3, 'Pool 4') },
+    { id: 8, t1: groupPredictions.L[0] || '1L', t2: getThirdPlacePlaceholder(4, 'Pool 5') },
+    { id: 9, t1: groupPredictions.A[1] || '2A', t2: groupPredictions.E[1] || '2E' },
+    { id: 10, t1: groupPredictions.D[0] || '1D', t2: getThirdPlacePlaceholder(5, 'Pool 6') },
+    { id: 11, t1: groupPredictions.G[0] || '1G', t2: groupPredictions.H[1] || '2H' },
+    { id: 12, t1: groupPredictions.J[0] || '1J', t2: getThirdPlacePlaceholder(6, 'Pool 7') },
+    { id: 13, t1: groupPredictions.C[1] || '2C', t2: groupPredictions.I[1] || '2I' },
+    { id: 14, t1: groupPredictions.B[0] || '1B', t2: getThirdPlacePlaceholder(7, 'Pool 8') },
+    { id: 15, t1: groupPredictions.K[1] || '2K', t2: groupPredictions.L[1] || '2L' },
+  ];
+
+  const advanceTeam = (index, team, currentStage, setNextStage, nextStageArray, downstreamResetters) => {
+    if (!team || team.startsWith('1') || team.startsWith('2') || team.includes('Pool') || team.includes('3rd')) return;
+    const updated = [...nextStageArray];
+    updated[index] = team;
+    setNextStage(updated);
+    downstreamResetters.forEach(reset => reset());
+  };
+
+  return (
+    <div className="min-h-screen bg-slate-950 text-slate-100 font-sans p-4 sm:p-6 selection:bg-emerald-500 selection:text-slate-950">
+      {/* Brand Header */}
+      <header className="max-w-7xl mx-auto text-center mb-10 mt-4">
+        <span className="text-xs font-bold tracking-widest text-emerald-400 uppercase bg-emerald-500/10 border border-emerald-500/20 px-3 py-1 rounded-full">
+          Interactive Bracket Builder
+        </span>
+        <h1 className="text-3xl font-black tracking-tight text-white mt-3 sm:text-5xl uppercase">
+          2026 World Cup Predictor
+        </h1>
+        <p className="mt-2 text-slate-400 max-w-xl mx-auto text-sm sm:text-base">
+          Manage all 12 groups, qualify the 8 best 3rd-place wildcards, and navigate the massive new 32-team elimination matrix.
+        </p>
+      </header>
+
+      <main className="max-w-7xl mx-auto space-y-12">
+        
+        {/* STEP 1: ALL 12 GROUPS */}
+        <section className="bg-slate-900/40 border border-slate-800/80 rounded-2xl p-4 sm:p-6 shadow-2xl backdrop-blur-md">
+          <div className="flex items-center space-x-3 mb-6 border-b border-slate-800 pb-3">
+            <span className="flex items-center justify-center bg-emerald-500 text-slate-950 font-black rounded-xl w-8 h-8 text-sm">1</span>
+            <div>
+              <h2 className="text-xl font-bold tracking-wide text-white">The Group Stages (A - L)</h2>
+              <p className="text-xs text-slate-400">Click teams to rank them 1st, 2nd, and 3rd in sequence.</p>
+            </div>
+          </div>
+          
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+            {Object.keys(initialGroups).map((letter) => {
+              const [w, ru, th] = groupPredictions[letter];
+              return (
+                <div key={letter} className="bg-slate-900 border border-slate-800 rounded-xl p-3.5 space-y-2">
+                  <div className="flex justify-between items-center border-b border-slate-800 pb-2">
+                    <h3 className="font-extrabold text-sm text-emerald-400 uppercase tracking-wider">Group {letter}</h3>
+                    <div className="flex space-x-1 text-[10px] font-mono">
+                      <span className={`px-1 rounded ${w ? 'bg-emerald-950 text-emerald-400' : 'bg-slate-800 text-slate-500'}`}>1: {w ? '✔' : '—'}</span>
+                      <span className={`px-1 rounded ${ru ? 'bg-cyan-950 text-cyan-400' : 'bg-slate-800 text-slate-500'}`}>2: {ru ? '✔' : '—'}</span>
+                      <span className={`px-1 rounded ${th ? 'bg-amber-950 text-amber-400' : 'bg-slate-800 text-slate-500'}`}>3: {th ? '✔' : '—'}</span>
+                    </div>
+                  </div>
+                  <div className="space-y-1 text-xs">
+                    {initialGroups[letter].map((team) => {
+                      const is1 = w === team; const is2 = ru === team; const is3 = th === team;
+                      return (
+                        <button
+                          key={team}
+                          onClick={() => handleGroupSelect(letter, team)}
+                          className={`w-full text-left px-2.5 py-1.5 rounded-md font-medium transition-all flex justify-between items-center ${
+                            is1 ? 'bg-emerald-500 text-slate-950 font-bold' :
+                            is2 ? 'bg-cyan-500 text-slate-950 font-bold' :
+                            is3 ? 'bg-amber-500 text-slate-950 font-bold' :
+                            'bg-slate-800/50 hover:bg-slate-800 text-slate-300'
+                          }`}
+                        >
+                          <span>{team}</span>
+                          {is1 && <span className="text-[10px] uppercase font-mono px-1 bg-slate-950/10 rounded">1st</span>}
+                          {is2 && <span className="text-[10px] uppercase font-mono px-1 bg-slate-950/10 rounded">2nd</span>}
+                          {is3 && <span className="text-[10px] uppercase font-mono px-1 bg-slate-950/10 rounded">3rd</span>}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </section>
+
+        {/* STEP 2: WILDCARD THIRD-PLACE SELECTOR */}
+        <section className="bg-slate-900/40 border border-slate-800/80 rounded-2xl p-4 sm:p-6 shadow-2xl backdrop-blur-md">
+          <div className="flex items-center space-x-3 mb-4 border-b border-slate-800 pb-3">
+            <span className="flex items-center justify-center bg-amber-500 text-slate-950 font-black rounded-xl w-8 h-8 text-sm">2</span>
+            <div>
+              <h2 className="text-xl font-bold tracking-wide text-white">Select the 8 Best 3rd-Place Teams</h2>
+              <p className="text-xs text-slate-400">Only 8 of the 12 third-place finishers make the cut. Choose your top 8 ({selectedThirdPlace.length}/8):</p>
+            </div>
+          </div>
+
+          <div className="flex flex-wrap gap-2">
+            {Object.keys(groupPredictions).map((letter) => {
+              const team = groupPredictions[letter][2];
+              if (!team) return null;
+              const isSelected = selectedThirdPlace.includes(team);
+              return (
+                <button
+                  key={letter}
+                  disabled={!isSelected && selectedThirdPlace.length >= 8}
+                  onClick={() => toggleThirdPlaceWildcard(team)}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
+                    isSelected 
+                      ? 'bg-amber-500 text-slate-950 font-bold border border-amber-400 shadow-md' 
+                      : 'bg-slate-900 border border-slate-800 text-slate-400 hover:text-slate-200 disabled:opacity-30'
+                  }`}
+                >
+                  {team} <span className="text-[10px] opacity-60">({letter})</span>
+                </button>
+              );
+            })}
+          </div>
+        </section>
+
+        {/* STEP 3: THE GIANT 2026 KNOCKOUT MATRIX */}
+        <section className="bg-slate-900/20 border border-slate-900 rounded-2xl p-4 overflow-x-auto">
+          <div className="flex items-center space-x-3 mb-8 border-b border-slate-800 pb-3 min-w-[1200px]">
+            <span className="flex items-center justify-center bg-cyan-500 text-slate-950 font-black rounded-xl w-8 h-8 text-sm">3</span>
+            <h2 className="text-xl font-bold tracking-wide text-white">The Knockout Phase Grid</h2>
+          </div>
+
+          {/* Horizontally scrolling bracket canvas */}
+          <div className="grid grid-cols-5 gap-6 items-stretch min-w-[1200px] font-mono text-xs">
+            
+            {/* 1. ROUND OF 32 (16 Matches) */}
+            <div className="space-y-3">
+              <h4 className="text-[10px] font-bold uppercase tracking-wider text-slate-500 border-b border-slate-800 pb-1 text-center">Round of 32</h4>
+              {r32Matchups.map((match, idx) => (
+                <div key={match.id} className="bg-slate-900/60 border border-slate-800/80 rounded-lg p-2 space-y-1">
+                  <button
+                    onClick={() => advanceTeam(Math.floor(idx / 2), match.t1, 'r32', setR32Winners, r32Winners, [() => setR16Winners(Array(8).fill(null)), () => setQfWinners(Array(4).fill(null)), () => setSfWinners(Array(2).fill(null)), () => setChampion(null)])}
+                    className={`w-full text-left px-2 py-1 rounded truncate transition-all ${r32Winners[Math.floor(idx / 2)] === match.t1 && !match.t1.includes('1') ? 'bg-emerald-500 text-slate-950 font-bold' : 'bg-slate-800/40 text-slate-300 hover:bg-slate-800'}`}
+                  >
+                    {match.t1}
+                  </button>
+                  <button
+                    onClick={() => advanceTeam(Math.floor(idx / 2), match.t2, 'r32', setR32Winners, r32Winners, [() => setR16Winners(Array(8).fill(null)), () => setQfWinners(Array(4).fill(null)), () => setSfWinners(Array(2).fill(null)), () => setChampion(null)])}
+                    className={`w-full text-left px-2 py-1 rounded truncate transition-all ${r32Winners[Math.floor(idx / 2)] === match.t2 && !match.t2.includes('Pool') ? 'bg-emerald-500 text-slate-950 font-bold' : 'bg-slate-800/40 text-slate-300 hover:bg-slate-800'}`}
+                  >
+                    {match.t2}
+                  </button>
+                </div>
+              ))}
+            </div>
+
+            {/* 2. ROUND OF 16 (8 Matches) */}
+            <div className="space-y-3 flex flex-col justify-around">
+              <div>
+                <h4 className="text-[10px] font-bold uppercase tracking-wider text-slate-500 border-b border-slate-800 pb-1 text-center mb-2">Round of 16</h4>
+                <div className="space-y-10">
+                  {Array(8).fill(null).map((_, idx) => {
+                    const t1 = r32Winners[idx * 2] || `Winner R32 M${idx * 2 + 1}`;
+                    const t2 = r32Winners[idx * 2 + 1] || `Winner R32 M${idx * 2 + 2}`;
+                    return (
+                      <div key={idx} className="bg-slate-900/60 border border-slate-800/80 rounded-lg p-2 space-y-1">
+                        <button
+                          onClick={() => advanceTeam(Math.floor(idx / 2), t1, 'r16', setR16Winners, r16Winners, [() => setQfWinners(Array(4).fill(null)), () => setSfWinners(Array(2).fill(null)), () => setChampion(null)])}
+                          className={`w-full text-left px-2 py-1 rounded truncate ${r16Winners[Math.floor(idx / 2)] === t1 && !t1.includes('R32') ? 'bg-cyan-500 text-slate-950 font-bold' : 'bg-slate-800/40 text-slate-300 hover:bg-slate-800'}`}
+                        >
+                          {t1}
+                        </button>
+                        <button
+                          onClick={() => advanceTeam(Math.floor(idx / 2), t2, 'r16', setR16Winners, r16Winners, [() => setQfWinners(Array(4).fill(null)), () => setSfWinners(Array(2).fill(null)), () => setChampion(null)])}
+                          className={`w-full text-left px-2 py-1 rounded truncate ${r16Winners[Math.floor(idx / 2)] === t2 && !t2.includes('R32') ? 'bg-cyan-500 text-slate-950 font-bold' : 'bg-slate-800/40 text-slate-300 hover:bg-slate-800'}`}
+                        >
+                          {t2}
+                        </button>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            </div>
+
+            {/* 3. QUARTER-FINALS (4 Matches) */}
+            <div className="space-y-3 flex flex-col justify-around">
+              <div>
+                <h4 className="text-[10px] font-bold uppercase tracking-wider text-slate-500 border-b border-slate-800 pb-1 text-center mb-2">Quarterfinals</h4>
+                <div className="space-y-28">
+                  {Array(4).fill(null).map((_, idx) => {
+                    const t1 = r16Winners[idx * 2] || `Winner R16 M${idx * 2 + 1}`;
+                    const t2 = r16Winners[idx * 2 + 1] || `Winner R16 M${idx * 2 + 2}`;
+                    return (
+                      <div key={idx} className="bg-slate-900/60 border border-slate-800/80 rounded-lg p-2 space-y-1">
+                        <button
+                          onClick={() => advanceTeam(Math.floor(idx / 2), t1, 'qf', setQfWinners, qfWinners, [() => setSfWinners(Array(2).fill(null)), () => setChampion(null)])}
+                          className={`w-full text-left px-2 py-1 rounded truncate ${qfWinners[Math.floor(idx / 2)] === t1 && !t1.includes('R16') ? 'bg-blue-500 text-slate-950 font-bold' : 'bg-slate-800/40 text-slate-300 hover:bg-slate-800'}`}
+                        >
+                          {t1}
+                        </button>
+                        <button
+                          onClick={() => advanceTeam(Math.floor(idx / 2), t2, 'qf', setQfWinners, qfWinners, [() => setSfWinners(Array(2).fill(null)), () => setChampion(null)])}
+                          className={`w-full text-left px-2 py-1 rounded truncate ${qfWinners[Math.floor(idx / 2)] === t2 && !t2.includes('R16') ? 'bg-blue-500 text-slate-950 font-bold' : 'bg-slate-800/40 text-slate-300 hover:bg-slate-800'}`}
+                        >
+                          {t2}
+                        </button>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            </div>
+
+            {/* 4. SEMI-FINALS (2 Matches) */}
+            <div className="space-y-3 flex flex-col justify-around">
+              <div>
+                <h4 className="text-[10px] font-bold uppercase tracking-wider text-slate-500 border-b border-slate-800 pb-1 text-center mb-2">Semifinals</h4>
+                <div className="space-y-72">
+                  {Array(2).fill(null).map((_, idx) => {
+                    const t1 = qfWinners[idx * 2] || `Winner QF M${idx * 2 + 1}`;
+                    const t2 = qfWinners[idx * 2 + 1] || `Winner QF M${idx * 2 + 2}`;
+                    return (
+                      <div key={idx} className="bg-slate-900/60 border border-slate-800/80 rounded-lg p-2 space-y-1">
+                        <button
+                          onClick={() => advanceTeam(0, t1, 'sf', (val) => setChampion(val[0]), [champion], [])}
+                          className={`w-full text-left px-2 py-1 rounded truncate ${champion === t1 && !t1.includes('QF') ? 'bg-amber-500 text-slate-950 font-bold' : 'bg-slate-800/40 text-slate-300 hover:bg-slate-800'}`}
+                        >
+                          {t1}
+                        </button>
+                        <button
+                          onClick={() => advanceTeam(0, t2, 'sf', (val) => setChampion(val[0]), [champion], [])}
+                          className={`w-full text-left px-2 py-1 rounded truncate ${champion === t2 && !t2.includes('QF') ? 'bg-amber-500 text-slate-950 font-bold' : 'bg-slate-800/40 text-slate-300 hover:bg-slate-800'}`}
+                        >
+                          {t2}
+                        </button>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            </div>
+
+            {/* 5. FINALS & CHAMPION HUB */}
+            <div className="flex flex-col justify-center items-center">
+              <h4 className="text-[10px] font-bold uppercase tracking-wider text-slate-500 border-b border-slate-800 pb-1 w-full text-center mb-4">Final Gold</h4>
+              <div className="bg-gradient-to-b from-amber-400/10 to-slate-900 border border-amber-500/30 rounded-2xl p-6 text-center w-full shadow-2xl relative overflow-hidden">
+                <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-amber-500 via-yellow-400 to-amber-600" />
+                <span className="text-4xl mb-2 block">🏆</span>
+                <p className="text-[10px] font-bold tracking-widest text-amber-400 uppercase">2026 World Champion</p>
+                <p className="text-lg font-black text-white mt-2 tracking-wide truncate">
+                  {champion && !champion.includes('M') ? champion : '????????'}
+                </p>
+              </div>
+            </div>
+
+          </div>
+        </section>
+      </main>
+    </div>
+  );
+}
